@@ -6,19 +6,12 @@
 #           model fitting and evaluation
 #   3. Testing on unseen images (model_test.py)
 
-# Import from standard libraries
-from pathlib import Path
 
-# Import useful libraries for data analysis
-import numpy as np
-import pandas as pd
-
-# Import useful libraries for visualization
-import matplotlib.pyplot as plt
+# Import libraries for visualization
 import seaborn as sns
 sns.set()
 
-# Import Keras Modules (Neural Network)
+# Import Keras Modules (for Neural Network)
 from keras.callbacks import ModelCheckpoint, EarlyStopping
 from keras.models import Sequential
 from keras.layers import Conv2D
@@ -26,15 +19,11 @@ from keras.layers import MaxPooling2D
 from keras.layers import Flatten
 from keras.layers import Dense
 from keras.layers import Dropout
-from keras.preprocessing.image import ImageDataGenerator
-from tensorflow.python.client import device_lib
 
-# Import useful libraries for evaluation
-from sklearn.metrics import classification_report, confusion_matrix
 
 # Import from other files in project
-from constants import *
 from dataset import *
+
 
 def create_model():
     # NN ARCHITECTURE
@@ -85,20 +74,7 @@ def create_model():
     return model
 
 
-def main():
-    # print(device_lib.list_local_devices())
-
-    train_dataset, validation_dataset, test_dataset = generate_subsets()
-
-    plot_subset_percetanges(train_dataset, validation_dataset, test_dataset)
-
-    plot_data_batch("BATCH 1 OF TRAINING\n(AUGMENTED DATA)", train_dataset)
-    plot_data_batch("BATCH 1 OF TESTING\n(NON-AUGMENTED DATA)", test_dataset)
-
-    model = create_model()
-
-    model.summary()
-
+def train_model(model, train_dataset, validation_dataset):
     # The loss function chosen to be optimized for your model is calculated at the end of each epoch.
     model.compile(optimizer="adam",
                   loss="binary_crossentropy",
@@ -116,14 +92,13 @@ def main():
     early_stop = EarlyStopping(monitor='val_loss', patience=2)
 
     # the best model will be automatically saved if the current val_loss is lower than the previous one.
-    checkpoint = ModelCheckpoint("cnn_model_trial4.hdf5",
+    checkpoint = ModelCheckpoint("cnn_model_trial5.hdf5",
                                  verbose=1,
                                  save_best_only=True,
                                  monitor="val_loss")
 
     # Callbacks provide a way to execute code and interact with the training model process automatically.
     # the model is evaluated on the validation dataset at the end of each training epoch.
-
     fitted_model = model.fit_generator(generator=train_dataset,
                                        validation_data=validation_dataset,
                                        steps_per_epoch=STEPS_PER_EPOCH,
@@ -132,12 +107,35 @@ def main():
                                        callbacks=[checkpoint, early_stop],
                                        verbose=1)
 
-    # list all data in history
-    print(fitted_model.history.keys()) # => dict_keys(['loss', 'accuracy', 'val_loss', 'val_accuracy'])
+    return fitted_model
 
-    plot_training_evaluation(fitted_model)
-    plot_training_accuracy(fitted_model)
-    plot_training_loss(fitted_model)
+
+def main():
+    # Generate train, validation, test datasets
+    train_dataset, validation_dataset, test_dataset = generate_subsets()
+
+    # Plot data segmentation of the datasets
+    plot_subset_percentages(train_dataset, validation_dataset, test_dataset)
+
+    # Plot the first batches of the training and the testing datasets
+    batch_number = 1
+    plot_data_batch(f"TRAINING BATCH {batch_number}\n(AUGMENTED DATA)", train_dataset, batch_number=batch_number)
+    plot_data_batch(f"TESTING BATCH {batch_number}\n(NON-AUGMENTED DATA)", test_dataset, batch_number=batch_number)
+
+    model = create_model()
+
+    model.summary()
+
+    trained_model = train_model(model, train_dataset, validation_dataset)
+
+    # list all data in history
+    # dict_keys(['loss', 'accuracy', 'val_loss', 'val_accuracy'])
+    print(trained_model.history.keys())
+
+    plot_training_evaluation(trained_model)
+    plot_training_metric(trained_model, "accuracy")
+    plot_training_metric(trained_model, "loss")
+
 
 if __name__ == "__main__":
     main()
